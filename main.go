@@ -34,7 +34,8 @@ type WhoisBackend interface {
 func main(){
 	var domains domainsType
 	var expireThresholdDays *int64
-	var systemWhoisBackend = whois_backends.SystemWhoisBackend{}
+	//var whoisBackend = whois_backends.SystemWhoisBackend{}
+	var whoisBackend = whois_backends.RawWhoisBackend{}
 
 	flag.Var(&domains, "d", "Domains")
 	expireThresholdDays = flag.Int64("t", 30, "Expire Threshold Days")
@@ -42,7 +43,7 @@ func main(){
 	flag.Parse()
 
 	for _, domain := range domains{
-		freeDate, err := checkDomain(domain, *expireThresholdDays, systemWhoisBackend)
+		freeDate, err := checkDomain(domain, *expireThresholdDays, whoisBackend)
 
 		if err != nil{
 			if freeDate != nil{

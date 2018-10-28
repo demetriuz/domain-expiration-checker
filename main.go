@@ -4,9 +4,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/demetriuz/domain-expiration-checker/whois_backends"
 	"log"
 	"strings"
-	"os/exec"
 	"time"
 )
 
@@ -26,19 +26,23 @@ func (i *domainsType) Set(value string) error {
 }
 
 
+type WhoisBackend interface {
+	Fetch(domain string) (string, error)
+}
+
+
 func main(){
 	var domains domainsType
 	var expireThresholdDays *int64
+	var systemWhoisBackend = whois_backends.SystemWhoisBackend{}
 
 	flag.Var(&domains, "d", "Domains")
 	expireThresholdDays = flag.Int64("t", 30, "Expire Threshold Days")
 
 	flag.Parse()
-	fmt.Println("Domains: ", domains)
 
 	for _, domain := range domains{
-		//var freeDate string
-		freeDate, err := checkDomain(domain, *expireThresholdDays)
+		freeDate, err := checkDomain(domain, *expireThresholdDays, systemWhoisBackend)
 
 		if err != nil{
 			if freeDate != nil{
@@ -51,13 +55,14 @@ func main(){
 }
 
 
-func checkDomain(domain string, expireThresholdDays int64) (freeDate *time.Time, err error){
-	out, err := exec.Command("whois", domain).Output()
+func checkDomain(domain string, expireThresholdDays int64, whoisBackend WhoisBackend) (freeDate *time.Time, err error){
+	out, err := whoisBackend.Fetch(domain)
+
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	outStrings := strings.Split(string(out[:]), "\n")
+	outStrings := strings.Split(out, "\n")
 	for _, line := range outStrings{
 		if strings.Contains(line, FREEDATE_FIELD_PREFIX){
 			line = strings.Replace(line, FREEDATE_FIELD_PREFIX, "", -1)

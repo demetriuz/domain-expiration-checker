@@ -4,12 +4,11 @@ import "os/exec"
 
 type SystemWhoisBackend struct{}
 
-
-func (b SystemWhoisBackend) Fetch(domain string) (string, error){
+func (b SystemWhoisBackend) Fetch(domain string) (string, error) {
 	out, err := exec.Command("whois", domain).Output()
-	if err != nil{
+	if err != nil {
 		return "", err
-	}else{
+	} else {
 		return string(out[:]), nil
 	}
 }

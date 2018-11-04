@@ -48,8 +48,6 @@ func main() {
 		}
 	}
 
-	fmt.Println(domains)
-
 	var workQueue = make(WorkQueue, 100)
 	var resultQueue = make(ResultQueue, 100)
 

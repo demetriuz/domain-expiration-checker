@@ -1,17 +1,15 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"strings"
-	"time"
 
 	"github.com/demetriuz/domain-expiration-checker/whois_backends"
 )
 
 const FREEDATE_FIELD_PREFIX = "free-date:"
+const WORKERS = 5
 
 type domainsType []string
 
@@ -39,45 +37,31 @@ func main() {
 
 	flag.Parse()
 
+	var workQueue = make(WorkQueue, 100)
+	var resultQueue = make(ResultQueue, 100)
+
+	for i := 0; i < WORKERS; i++ {
+		w := NewWorker(i, &workQueue, &resultQueue, CheckDomainHandler, whoisBackend)
+		w.Start()
+	}
+
 	for _, domain := range domains {
-		freeDate, err := checkDomain(domain, *expireThresholdDays, whoisBackend)
+		AddWork(domain, *expireThresholdDays, workQueue)
+	}
 
-		if err != nil {
-			if freeDate != nil {
-				fmt.Printf("%s: %s\n", domain, *freeDate)
-			} else {
-				fmt.Printf("%s: %s\n", domain, err)
-			}
+	domainsCount := len(domains)
+	var resultsCount = 0
+	for res := range resultQueue {
+		resultsCount += 1
+
+		if res.err != nil {
+			fmt.Printf("%s: %s\n", res.Domain, res.err)
+		} else {
+			fmt.Printf("%s: %s\n", res.Domain, *res.freeDate)
+		}
+
+		if resultsCount == domainsCount {
+			break
 		}
 	}
-}
-
-func checkDomain(domain string, expireThresholdDays int64, whoisBackend WhoisBackend) (freeDate *time.Time, err error) {
-	out, err := whoisBackend.Fetch(domain)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	outStrings := strings.Split(out, "\n")
-	for _, line := range outStrings {
-		if strings.Contains(line, FREEDATE_FIELD_PREFIX) {
-			line = strings.Replace(line, FREEDATE_FIELD_PREFIX, "", -1)
-			line = strings.Trim(line, " ")
-
-			// https://golang.org/src/time/format.go
-			// layout: stdLongYear-stdZeroMonth-stdZeroDay
-			expirationDate, err := time.Parse("2006-01-02", line)
-			if err != nil {
-				return nil, errors.New("can't parse date")
-			}
-			timeDelta := int64(expirationDate.Unix()) - int64(time.Now().Unix())
-			if timeDelta < (expireThresholdDays * 24 * 60 * 60) {
-				return &expirationDate, errors.New("expiration threshold is reached")
-			} else {
-				return &expirationDate, nil
-			}
-		}
-	}
-	return nil, errors.New("NotFound")
 }

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/demetriuz/domain-expiration-checker/whois_backends"
@@ -36,6 +38,17 @@ func main() {
 	expireThresholdDays = flag.Int64("t", 30, "Expire Threshold Days")
 
 	flag.Parse()
+
+	// try get domains from stdin
+	if len(domains) == 0 {
+		scanner := bufio.NewScanner(os.Stdin)
+
+		for scanner.Scan() {
+			domains = append(domains, scanner.Text())
+		}
+	}
+
+	fmt.Println(domains)
 
 	var workQueue = make(WorkQueue, 100)
 	var resultQueue = make(ResultQueue, 100)

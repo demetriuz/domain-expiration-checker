@@ -20,4 +20,4 @@ ya.ru: 2019-09-01 00:00:00 +0000 UTC
 - [ ] backends should configure app
 - [ ] tests
 - [ ] build infrastructure
-- [ ] get domains from STDIN
+- [x] get domains from STDIN
